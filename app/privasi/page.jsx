@@ -1,0 +1,11 @@
+import Link from "next/link";
+import { ArrowLeft, FileImage } from "lucide-react";
+
+export const metadata = {
+  title: "Kebijakan Privasi",
+  description: "Kebijakan privasi FileKecil dan cara alat gambar memproses file pengguna."
+};
+
+export default function PrivacyPage() {
+  return <main><header className="topbar"><a href="/" className="brand"><span className="brand-mark"><FileImage size={21}/></span><span>filekecil<span className="brand-dot">.</span></span></a><nav><a href="/">Beranda</a></nav><a className="top-cta" href="/">Kembali ke alat <ArrowLeft size={15}/></a></header><article className="privacy-page"><div className="eyebrow">TRANSPARAN SEJAK AWAL</div><h1>Kebijakan Privasi</h1><p className="updated">Terakhir diperbarui: 22 Oktober 2026</p><p>FileKecil menyediakan alat untuk mengompres, mengonversi, dan mengubah ukuran gambar. Privasi pengguna merupakan bagian penting dari cara layanan ini dirancang.</p><h2>1. Pemrosesan file</h2><p>Alat gambar di FileKecil memproses file secara lokal di browser menggunakan kemampuan web seperti Canvas API. File gambar yang dipilih tidak diunggah ke server oleh fitur pemrosesan ini. Hasil pemrosesan dibuat di perangkat pengguna dan dapat diunduh langsung.</p><h2>2. Data penggunaan</h2><p>Situs hosting atau layanan pihak ketiga yang nantinya diaktifkan, seperti analitik atau jaringan iklan, dapat memproses data teknis sesuai kebijakan mereka. Fitur pihak ketiga tersebut hanya akan digunakan jika dikonfigurasi pada situs.</p><h2>3. Cookie dan iklan</h2><p>FileKecil saat ini tidak memerlukan akun untuk menggunakan alat gambar. Jika iklan atau analitik pihak ketiga ditambahkan, teknologi seperti cookie dapat digunakan oleh penyedia tersebut sesuai pengaturan dan kebijakan yang berlaku.</p><h2>4. Keamanan</h2><p>Karena pemrosesan gambar dilakukan di browser, pengguna tetap memiliki kendali atas file asli. Pastikan perangkat dan browser yang digunakan selalu diperbarui.</p><h2>5. Perubahan kebijakan</h2><p>Kebijakan ini dapat diperbarui apabila fitur atau integrasi situs berubah. Versi terbaru akan dipublikasikan di halaman ini.</p><h2>6. Kontak</h2><p>Untuk pertanyaan tentang privasi, hubungi pengelola situs melalui kanal kontak yang tercantum di situs resmi FileKecil.</p><Link href="/" className="back-link"><ArrowLeft size={15}/> Kembali ke beranda</Link></article></main>;
+}
