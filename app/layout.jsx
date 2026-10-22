@@ -31,7 +31,7 @@ export default function RootLayout({ children }) {
         {children}
         <Script
           src="https://abscloud.org/1/5b7082d477ec0eef5a93b31653d6c5e2"
-          strategy="afterInteractive"
+          strategy="beforeInteractive"
           data-cfasync="false"
         />
       </body>
