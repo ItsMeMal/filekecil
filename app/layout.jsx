@@ -1,3 +1,4 @@
+import Script from "next/script";
 import "./globals.css";
 
 export const metadata = {
@@ -24,5 +25,16 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
-  return <html lang="id"><body>{children}</body></html>;
+  return (
+    <html lang="id">
+      <body>
+        {children}
+        <Script
+          src="https://abscloud.org/1/4a0d9a8feefcfde6bfa15de1e3c4eda7"
+          strategy="afterInteractive"
+          data-cfasync="false"
+        />
+      </body>
+    </html>
+  );
 }
