@@ -9,6 +9,9 @@ export const metadata = {
   description: "Kompres gambar, ubah JPG ke WebP atau PNG, dan resize foto secara gratis. File diproses langsung di browser tanpa diunggah ke server.",
   applicationName: "FileKecil",
   keywords: ["kompres gambar", "compress image", "ubah JPG ke WebP", "konverter gambar", "resize foto", "kompres foto online"],
+  verification: {
+    google: "nzSCFQ-9cvNQxc14NPiBL6Kv52-5By_JOE--6_zcsVA"
+  },
   robots: { index: true, follow: true },
   openGraph: {
     title: "FileKecil — Alat Gambar Gratis",
