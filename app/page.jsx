@@ -9,6 +9,22 @@ const tools = [
   { id: "resize", title: "Resize gambar", desc: "Atur lebar dan tinggi sesuai kebutuhan.", icon: Scaling },
 ];
 
+async function makeIcoBlob(pngBlob) {
+  const png = new Uint8Array(await pngBlob.arrayBuffer());
+  const header = new ArrayBuffer(22);
+  const view = new DataView(header);
+  view.setUint16(0, 0, true);
+  view.setUint16(2, 1, true);
+  view.setUint16(4, 1, true);
+  view.setUint8(6, 0); view.setUint8(7, 0);
+  view.setUint8(8, 0); view.setUint8(9, 0);
+  view.setUint16(10, 1, true);
+  view.setUint16(12, 32, true);
+  view.setUint32(14, png.byteLength, true);
+  view.setUint32(18, 22, true);
+  return new Blob([header, png], { type: "image/x-icon" });
+}
+
 function prettyBytes(bytes) {
   if (!bytes && bytes !== 0) return "—";
   if (bytes < 1024) return bytes + " B";
@@ -72,9 +88,35 @@ export default function Home() {
       const ctx = canvas.getContext("2d", { alpha: format !== "image/jpeg" });
       if (format === "image/jpeg") { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, w, h); }
       ctx.drawImage(img, 0, 0, w, h);
-      const outputType = mode === "convert" ? format : (mode === "resize" ? (file.type === "image/png" ? "image/png" : format) : format);
-      const blob = await new Promise((resolve, reject) => canvas.toBlob(b => b ? resolve(b) : reject(new Error("Browser tidak bisa membuat gambar dengan format ini.")), outputType, quality / 100));
-      const ext = outputType === "image/jpeg" ? "jpg" : outputType.split("/")[1];
+      let blob;
+      let outputType = format;
+      if (format === "application/pdf") {
+        const { jsPDF } = await import("jspdf");
+        const pdfCanvas = document.createElement("canvas");
+        pdfCanvas.width = w; pdfCanvas.height = h;
+        const pdfCtx = pdfCanvas.getContext("2d");
+        pdfCtx.fillStyle = "#ffffff"; pdfCtx.fillRect(0, 0, w, h);
+        pdfCtx.drawImage(img, 0, 0, w, h);
+        const jpegData = pdfCanvas.toDataURL("image/jpeg", quality / 100);
+        const pdf = new jsPDF({ orientation: w >= h ? "landscape" : "portrait", unit: "pt", format: [w, h], compress: true });
+        pdf.addImage(jpegData, "JPEG", 0, 0, w, h);
+        blob = pdf.output("blob");
+      } else if (format === "image/x-icon") {
+        const icoCanvas = document.createElement("canvas");
+        const scale = Math.min(1, 256 / Math.max(w, h));
+        icoCanvas.width = Math.max(1, Math.round(w * scale));
+        icoCanvas.height = Math.max(1, Math.round(h * scale));
+        const icoCtx = icoCanvas.getContext("2d");
+        icoCtx.clearRect(0, 0, icoCanvas.width, icoCanvas.height);
+        icoCtx.drawImage(img, 0, 0, icoCanvas.width, icoCanvas.height);
+        const pngBlob = await new Promise((resolve, reject) => icoCanvas.toBlob(b => b ? resolve(b) : reject(new Error("Gagal membuat ikon ICO.")), "image/png"));
+        blob = await makeIcoBlob(pngBlob);
+      } else {
+        blob = await new Promise((resolve, reject) => canvas.toBlob(b => b ? resolve(b) : reject(new Error("Browser tidak bisa membuat gambar dengan format ini.")), format, quality / 100));
+        if (blob.type !== format) throw new Error("Browser ini tidak mendukung format hasil tersebut. Pilih JPG, PNG, WebP, ICO, atau PDF.");
+      }
+      outputType = format;
+      const ext = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/x-icon": "ico", "application/pdf": "pdf" })[outputType] || "img";
       const base = file.name.replace(/\.[^.]+$/, "");
       setResult({ blob, url: URL.createObjectURL(blob), name: base + "-filekecil." + ext, originalSize: file.size, size: blob.size, width: w, height: h, type: outputType });
     } catch (e) {
@@ -124,7 +166,7 @@ export default function Home() {
             <div className="file-preview"><img ref={imageRef} src={preview} alt="Pratinjau gambar yang dipilih"/><div className="file-meta"><strong>{file.name}</strong><span>{prettyBytes(file.size)} · {imageRef.current?.naturalWidth || width} × {imageRef.current?.naturalHeight || height} px</span></div></div>
             <div className="settings">
               {mode === "resize" && <><label>Lebar (px)<input type="number" min="1" max="10000" value={width} onChange={e => updateWidth(e.target.value)}/></label><label>Tinggi (px)<input type="number" min="1" max="10000" value={height} onChange={e => updateHeight(e.target.value)}/></label><label className="check-label"><input type="checkbox" checked={keepRatio} onChange={e => setKeepRatio(e.target.checked)}/> Pertahankan rasio gambar</label></>}
-              <label>Format hasil<select value={format} onChange={e => setFormat(e.target.value)}><option value="image/webp">WebP — ukuran kecil</option><option value="image/jpeg">JPG — kompatibel luas</option><option value="image/png">PNG — dukung transparansi</option></select></label>
+              <label>Format hasil<select value={format} onChange={e => setFormat(e.target.value)}><option value="image/webp">WebP — ukuran kecil</option><option value="image/jpeg">JPG — kompatibel luas</option><option value="image/png">PNG — dukung transparansi</option><option value="image/x-icon">ICO — ikon / favicon</option><option value="application/pdf">PDF — dokumen</option></select></label>
               <label className="quality-label"><span>Kualitas <b>{quality}%</b></span><input type="range" min="10" max="100" value={quality} onChange={e => setQuality(Number(e.target.value))}/><span className="range-labels"><small>File lebih kecil</small><small>Detail lebih tinggi</small></span></label>
               <button className="primary-btn process-btn" onClick={processImage} disabled={busy}>{busy ? "Memproses gambar..." : "Proses gambar"} <ArrowRight size={17}/></button>
             </div>
@@ -138,7 +180,7 @@ export default function Home() {
 
       <section className="how-section" id="cara-kerja"><div className="eyebrow">MUDAH BANGET</div><h2>Tiga langkah. Selesai.</h2><div className="steps"><div><span>01</span><h3>Pilih gambar</h3><p>Ambil file dari perangkatmu. Tidak perlu membuat akun.</p></div><div><span>02</span><h3>Atur hasilnya</h3><p>Pilih format, kualitas, atau ukuran sesuai kebutuhan.</p></div><div><span>03</span><h3>Unduh hasil</h3><p>Simpan hasil olahan langsung ke perangkatmu.</p></div></div></section>
 
-      <section className="faq-section"><div className="eyebrow">FAQ</div><h2>Pertanyaan umum</h2><details><summary>Apakah FileKecil gratis?</summary><p>Ya. Semua alat yang tersedia saat ini dapat digunakan gratis tanpa akun.</p></details><details><summary>Apakah gambar saya diunggah ke server?</summary><p>Tidak. Pemrosesan gambar dilakukan secara lokal di browser. File asli tidak dikirim ke server oleh alat ini.</p></details><details><summary>Format apa yang didukung?</summary><p>File masukan yang didukung adalah JPG, PNG, WebP, GIF, dan BMP. Hasil dapat disimpan sebagai WebP, JPG, atau PNG. GIF yang diproses menjadi gambar statis akan menggunakan frame yang ditampilkan browser.</p></details><details><summary>Kenapa ukuran hasil kadang lebih besar?</summary><p>Hasil bergantung pada format, kualitas, dan isi gambar. Coba WebP atau turunkan pengaturan kualitas untuk ukuran yang lebih kecil.</p></details></section>
+      <section className="faq-section"><div className="eyebrow">FAQ</div><h2>Pertanyaan umum</h2><details><summary>Apakah FileKecil gratis?</summary><p>Ya. Semua alat yang tersedia saat ini dapat digunakan gratis tanpa akun.</p></details><details><summary>Apakah gambar saya diunggah ke server?</summary><p>Tidak. Pemrosesan gambar dilakukan secara lokal di browser. File asli tidak dikirim ke server oleh alat ini.</p></details><details><summary>Format apa yang didukung?</summary><p>File masukan yang didukung adalah JPG, PNG, WebP, GIF, dan BMP. Hasil dapat disimpan sebagai WebP, JPG, PNG, ICO, atau PDF. GIF yang diproses menjadi gambar statis akan menggunakan frame yang ditampilkan browser.</p></details><details><summary>Kenapa ukuran hasil kadang lebih besar?</summary><p>Hasil bergantung pada format, kualitas, dan isi gambar. Coba WebP atau turunkan pengaturan kualitas untuk ukuran yang lebih kecil.</p></details></section>
 
       <footer><a href="/" className="brand"><span className="brand-mark"><FileImage size={19}/></span><span>filekecil<span className="brand-dot">.</span></span></a><span>Alat gambar praktis. File tetap milikmu.</span><div><a href="/privasi">Kebijakan privasi</a><a href="mailto:halo@filekecil.id">Kontak</a></div></footer>
     </main>
