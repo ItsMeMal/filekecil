@@ -4,7 +4,7 @@ Toolkit gambar online untuk kompres, konversi format, dan resize gambar. Pemrose
 
 ## Fitur
 - Kompres gambar dengan pengaturan kualitas.
-- Konversi JPG, PNG, dan WebP.
+- Konversi JPG, PNG, WebP, ICO (ikon/favicon), dan PDF.
 - Resize dimensi gambar dengan opsi mempertahankan rasio.
 - Unduh hasil tanpa mengunggah file ke server.
 - Halaman kebijakan privasi, metadata SEO, sitemap, robots.txt, dan favicon.
@@ -29,5 +29,5 @@ Setelah memiliki domain produksi sendiri, ubah `metadataBase`, URL sitemap, dan 
 
 ## Catatan
 - File diproses di browser; batas ukuran input saat ini 25 MB.
-- Dukungan format output bergantung pada browser dan Canvas API.
+- Dukungan WebP bergantung pada browser dan Canvas API; ekspor PDF dan ICO dibuat di browser.
 - Pengolahan GIF menggunakan frame yang ditampilkan browser dan menghasilkan gambar statis.
