@@ -47,18 +47,46 @@ export default function Home() {
   const inputRef = useRef(null);
   const imageRef = useRef(null);
 
-  const loadFile = useCallback((selected) => {
+  const loadFile = useCallback(async (selected) => {
     if (!selected) return;
-    if (!selected.type.startsWith("image/")) { setError("Pilih file gambar yang valid."); return; }
-    if (!["image/jpeg", "image/png", "image/webp", "image/gif", "image/bmp"].includes(selected.type)) {
-      setError("Format ini belum didukung. Gunakan JPG, PNG, WebP, GIF, atau BMP."); return;
-    }
+    setError("");
     if (selected.size > 25 * 1024 * 1024) { setError("Ukuran maksimum file adalah 25 MB."); return; }
-    setError(""); setResult(null); setFile(selected);
-    const url = URL.createObjectURL(selected);
+
+    const extension = selected.name.split(".").pop()?.toLowerCase();
+    const isHeic = ["heic", "heif"].includes(extension) || ["image/heic", "image/heif", "image/heic-sequence", "image/heif-sequence"].includes(selected.type.toLowerCase());
+    let imageFile = selected;
+
+    if (isHeic) {
+      try {
+        const heic2anyModule = await import("heic2any");
+        const heic2any = heic2anyModule.default;
+        const converted = await heic2any({ blob: selected, toType: "image/jpeg", quality: 0.92 });
+        const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
+        imageFile = new File([jpegBlob], selected.name.replace(/\\.(heic|heif)$/i, ".jpg"), { type: "image/jpeg", lastModified: selected.lastModified });
+      } catch {
+        setError("Foto HEIC/HEIF ini gagal dibaca. Coba ekspor dari HP sebagai JPG, lalu pilih lagi.");
+        return;
+      }
+    } else {
+      const supportedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif", "image/bmp"];
+      const looksLikeSupportedImage = supportedTypes.includes(selected.type.toLowerCase()) ||
+        ["jpg", "jpeg", "png", "webp", "gif", "bmp"].includes(extension);
+      if (!looksLikeSupportedImage) {
+        setError("Format belum didukung. Gunakan JPG/JPEG, PNG, WebP, GIF, BMP, atau HEIC/HEIF.");
+        return;
+      }
+      // Some file pickers return an empty MIME type even for valid .jpg files.
+      if (!selected.type && ["jpg", "jpeg"].includes(extension)) {
+        imageFile = new File([selected], selected.name, { type: "image/jpeg", lastModified: selected.lastModified });
+      }
+    }
+
+    setResult(null); setFile(imageFile);
+    const url = URL.createObjectURL(imageFile);
     setPreview(url);
     const img = new Image();
     img.onload = () => { setWidth(String(img.naturalWidth)); setHeight(String(img.naturalHeight)); };
+    img.onerror = () => setError("Browser tidak bisa membaca gambar ini. Jika foto berasal dari iPhone, pastikan formatnya JPG atau HEIC/HEIF.");
     img.src = url;
   }, []);
 
@@ -162,7 +190,7 @@ export default function Home() {
 
         <div className="workspace">
           <div className="workspace-heading"><div><span className="step-number">01</span><div><h3>{tools.find(t => t.id === mode).title}</h3><p>Tambahkan gambar untuk mulai mengolah.</p></div></div>{file && <button className="text-button" onClick={reset}><X size={15}/> Hapus file</button>}</div>
-          {!file ? <button className="dropzone" onClick={() => inputRef.current?.click()} onDragOver={e => {e.preventDefault(); e.currentTarget.classList.add("dragging");}} onDragLeave={e => e.currentTarget.classList.remove("dragging")} onDrop={e => {e.preventDefault();e.currentTarget.classList.remove("dragging");loadFile(e.dataTransfer.files?.[0]);}}><span className="upload-icon"><ImagePlus size={25}/></span><strong>Klik untuk pilih gambar</strong><span>atau seret dan lepaskan file di sini</span><small>JPG, PNG, WebP, GIF, BMP · Maks. 25 MB</small></button> : <div className="editor">
+          {!file ? <button className="dropzone" onClick={() => inputRef.current?.click()} onDragOver={e => {e.preventDefault(); e.currentTarget.classList.add("dragging");}} onDragLeave={e => e.currentTarget.classList.remove("dragging")} onDrop={e => {e.preventDefault();e.currentTarget.classList.remove("dragging");loadFile(e.dataTransfer.files?.[0]);}}><span className="upload-icon"><ImagePlus size={25}/></span><strong>Klik untuk pilih gambar</strong><span>atau seret dan lepaskan file di sini</span><small>JPG, PNG, WebP, GIF, BMP, HEIC/HEIF · Maks. 25 MB</small></button> : <div className="editor">
             <div className="file-preview"><img ref={imageRef} src={preview} alt="Pratinjau gambar yang dipilih"/><div className="file-meta"><strong>{file.name}</strong><span>{prettyBytes(file.size)} · {imageRef.current?.naturalWidth || width} × {imageRef.current?.naturalHeight || height} px</span></div></div>
             <div className="settings">
               {mode === "resize" && <><label>Lebar (px)<input type="number" min="1" max="10000" value={width} onChange={e => updateWidth(e.target.value)}/></label><label>Tinggi (px)<input type="number" min="1" max="10000" value={height} onChange={e => updateHeight(e.target.value)}/></label><label className="check-label"><input type="checkbox" checked={keepRatio} onChange={e => setKeepRatio(e.target.checked)}/> Pertahankan rasio gambar</label></>}
@@ -171,7 +199,7 @@ export default function Home() {
               <button className="primary-btn process-btn" onClick={processImage} disabled={busy}>{busy ? "Memproses gambar..." : "Proses gambar"} <ArrowRight size={17}/></button>
             </div>
           </div>}
-          <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/bmp" hidden onChange={e => loadFile(e.target.files?.[0])}/>
+          <input ref={inputRef} type="file" accept="image/*,.jpg,.jpeg,.png,.webp,.gif,.bmp,.heic,.heif" hidden onChange={e => loadFile(e.target.files?.[0])}/>
           {error && <p className="error-message" role="alert">{error}</p>}
           {result && <div className="result-box"><div className="result-head"><span className="success-icon"><Check size={18}/></span><div><strong>Gambar berhasil diproses!</strong><p>{result.width} × {result.height} px · {result.type.replace("image/","").toUpperCase()}</p></div></div><div className="result-stats"><div><small>Ukuran awal</small><strong>{prettyBytes(result.originalSize)}</strong></div><ArrowRight size={17}/><div><small>Ukuran hasil</small><strong>{prettyBytes(result.size)}</strong></div><span className="saved-pill">{result.size <= result.originalSize ? "-" + saved + "%" : "+" + Math.round((result.size/result.originalSize-1)*100) + "%"}</span></div><a className="primary-btn download-btn" href={result.url} download={result.name}><ArrowDownToLine size={17}/> Unduh gambar</a></div>}
           <div className="workspace-foot"><ShieldCheck size={16}/> Gambar diproses di perangkatmu dan tidak dikirim ke server.</div>
