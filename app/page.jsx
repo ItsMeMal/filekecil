@@ -62,7 +62,7 @@ export default function Home() {
         const heic2any = heic2anyModule.default;
         const converted = await heic2any({ blob: selected, toType: "image/jpeg", quality: 0.92 });
         const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
-        imageFile = new File([jpegBlob], selected.name.replace(/\\.(heic|heif)$/i, ".jpg"), { type: "image/jpeg", lastModified: selected.lastModified });
+        imageFile = new File([jpegBlob], selected.name.replace(/\.(heic|heif)$/i, ".jpg"), { type: "image/jpeg", lastModified: selected.lastModified });
       } catch {
         setError("Foto HEIC/HEIF ini gagal dibaca. Coba ekspor dari HP sebagai JPG, lalu pilih lagi.");
         return;
@@ -105,7 +105,17 @@ export default function Home() {
     try {
       const img = new Image();
       img.src = preview;
-      await img.decode();
+      if (typeof img.decode === "function") {
+        await img.decode();
+      } else {
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = () => reject(new Error("Browser gagal membaca gambar. Coba simpan ulang foto sebagai JPG atau PNG."));
+        });
+      }
+      if (!img.naturalWidth || !img.naturalHeight) {
+        throw new Error("Gambar tidak memiliki dimensi yang valid atau formatnya tidak didukung browser.");
+      }
       let w = img.naturalWidth, h = img.naturalHeight;
       if (mode === "resize") {
         w = Math.max(1, Math.min(10000, Number(width) || w));
@@ -114,6 +124,7 @@ export default function Home() {
       const canvas = document.createElement("canvas");
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext("2d", { alpha: format !== "image/jpeg" });
+      if (!ctx) throw new Error("Browser tidak dapat membuat kanvas untuk memproses gambar.");
       if (format === "image/jpeg") { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, w, h); }
       ctx.drawImage(img, 0, 0, w, h);
       let blob;
